@@ -1,0 +1,301 @@
+<div class="editor draggable">
+	<div id="adoisjfknm">
+		<h3 id="asvasdio">Editor</h3>
+		<div class="solution">
+			<span>
+				<input type="radio" name="mode" id="edit">
+				<label for="edit">Edit</label>
+			</span>
+			<span>
+				<input type="radio" name="mode" id="preview">
+				<label for="preview">Preview</label>
+			</span>
+			<span>
+				<input type="radio" name="mode" id="solution">
+				<label for="solution">Show Solution</label>
+			</span>
+		</div>
+	</div>
+	<style class="style__content" contenteditable="true"></style>
+</div>
+
+<style>
+	.draggable {
+		position: absolute;
+		z-index: 20;
+		background: #ccc;
+		resize: both;
+		overflow: auto;
+		padding: 1rem;
+	}
+
+	.editor {
+		min-width: 400px;
+		min-height: 600px;
+		box-sizing: border-box;
+	}
+
+	.editor div#adoisjfknm {
+		display: flex;
+		justify-content: space-between;
+	}
+
+	.editor h3#asvasdio {
+		margin: 0;
+		font-family: monospace;
+	}
+
+	.draggable .drag__btn i.dot {
+		display: block;
+		width: 6px;
+		height: 6px;
+		background: #bbb;
+		border-radius: 50%;
+	}
+
+	.draggable .drag__btn {
+		display: flex;
+		gap: 4px;
+		position: absolute;
+		top: 5px;
+		left: 50%;
+		transform: translateX(-50%);
+
+		padding: 4px;
+
+		font-size: 16px;
+
+		cursor: grab;
+		border: none;
+	}
+
+
+
+	.draggable button:active {
+		cursor: grabbing;
+		outline: none;
+	}
+
+	.editor .style__content,
+	.editor .div__content {
+		display: inline-block;
+		position: absolute;
+		top: 40px;
+		bottom: 1rem;
+		left: 1rem;
+		right: 1rem;
+
+		padding: 12px;
+
+		border: 1px solid #ccc;
+
+		white-space: pre;
+		font-family: monospace;
+		overflow: scroll;
+
+		background: #1e1e2d;
+		color: #fff;
+	}
+
+	.editor .style__content:focus {
+		outline: none;
+		border: 1px solid #ccc;
+	}
+
+	.editor .div__content {
+		color: #aaa;
+	}
+</style>
+
+
+<script>
+	function insert(
+		strings,
+		moveFunc = (nodes, range, selection) => {
+			range.setStartAfter(nodes[0]);
+			range.setEndAfter(nodes[0]);
+			selection.removeAllRanges();
+			selection.addRange(range);
+		}
+	) {
+		const selection = window.getSelection();
+		const range = selection.getRangeAt(0);
+		range.deleteContents();
+
+		// const textNode = document.createTextNode(string);
+		const textNodes = strings.map(str => document.createTextNode(str));
+
+		textNodes.forEach(node => {
+			range.insertNode(node)
+		});
+
+
+		moveFunc(textNodes, range, selection)
+	}
+	document.addEventListener('keydown', event => {
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			insert(['\n'])
+		} else if (event.key === 'Tab') {
+			event.preventDefault();
+			insert(['    '])
+		} else if (event.key === '{') {
+			insert(['}', '{'], (nodes, range, selection) => {
+				range.setStartAfter(nodes[1]);
+				range.setEndBefore(nodes[0]);
+				selection.removeAllRanges();
+				selection.addRange(range);
+			})
+			event.preventDefault();
+		}
+	})
+
+	// move section
+
+
+	let dragging;
+
+	window.onload = () => {
+		const draggables = document.querySelectorAll('.draggable');
+
+		draggables.forEach(d => {
+			const moveBtn = document.createElement('button');
+			moveBtn.classList.add('drag__btn');
+
+			const i = document.createElement('i')
+			i.classList.add('dot')
+
+			moveBtn.appendChild(i.cloneNode());
+			moveBtn.appendChild(i.cloneNode());
+			moveBtn.appendChild(i.cloneNode());
+
+			moveBtn.addEventListener('mousedown', e => {
+				dragging = d;
+			})
+
+			d.insertAdjacentElement("afterbegin", moveBtn);
+		});
+	}
+
+
+	document.addEventListener('mouseup', e => {
+		dragging = undefined;
+	})
+
+	function getOffsetSum(elem) {
+		var top = 0, left = 0
+		while (elem) {
+			top = top + parseInt(elem.offsetTop)
+			left = left + parseInt(elem.offsetLeft)
+			elem = elem.offsetParent
+		}
+
+		return { top: top, left: left }
+	}
+
+
+	function getOffsetRect(elem) {
+		var box = elem.getBoundingClientRect()
+
+		var body = document.body
+		var docElem = document.documentElement
+
+		var scrollTop = window.pageYOffset || docElem.scrollTop || body.scrollTop
+		var scrollLeft = window.pageXOffset || docElem.scrollLeft || body.scrollLeft
+
+		var clientTop = docElem.clientTop || body.clientTop || 0
+		var clientLeft = docElem.clientLeft || body.clientLeft || 0
+
+		var top = box.top + scrollTop - clientTop
+		var left = box.left + scrollLeft - clientLeft
+
+		return { top: Math.round(top), left: Math.round(left) }
+	}
+
+
+	function getOffset(elem) {
+		if (elem.getBoundingClientRect) {
+			return getOffsetRect(elem)
+		} else {
+			return getOffsetSum(elem)
+		}
+	}
+
+	document.addEventListener('mousemove', e => {
+		if (!dragging) return;
+		const x = e.movementX;
+		const y = e.movementY
+
+		const editorOffset = getOffset(dragging);
+
+		dragging.style.top = `${editorOffset.top + y}px`
+		dragging.style.left = `${editorOffset.left + x}px`
+	})
+
+	// solution function
+	const solutionContainer = document.querySelector('.solution');
+
+	const editRadio = document.querySelector('#edit');
+	const previewRadio = document.querySelector('#preview');
+	const solutionRadio = document.querySelector('#solution');
+
+	let styleEditor = document.querySelector('.editor style');
+
+	let solution;
+	let temp;
+	let linkElement = document.createElement('link');
+	linkElement.rel = "stylesheet"
+
+	solutionContainer.addEventListener('click', async (e) => {
+		e.stopPropagation();
+		const { href } = window.location
+		const isTrailing = href.substring(href.length - 1) === '/'
+		const id = href.substring(href.lastIndexOf('/', isTrailing ? href.length - 2 : undefined) + 1, isTrailing ? href.length - 1 : undefined);
+
+		if (!solution) {
+			const res = await fetch(`/solution/${id}`)
+			solution = (await res.text()).replace(/\t/g, '    ');
+		}
+		if (!temp && temp != '') {
+			temp = styleEditor.innerText ?? '';
+		}
+		// isChecked it's fliped
+		if (solutionRadio.checked) {
+			if (styleEditor.tagName === 'DIV')
+				styleEditor = swap(styleEditor);
+			styleEditor.innerText = solution
+			linkElement.parentNode.removeChild(linkElement)
+		} else if (previewRadio.checked) {
+			if (styleEditor.tagName === 'STYLE')
+				styleEditor = swap(styleEditor);
+
+			linkElement.href = `/solution/${id}`
+			document.head.appendChild(linkElement)
+		} else if (editRadio.checked) {
+			if (styleEditor.tagName === 'DIV')
+				styleEditor = swap(styleEditor);
+			styleEditor.innerText = temp;
+			temp = undefined;
+			linkElement.parentNode.removeChild(linkElement)
+		}
+	})
+
+	function swap(currentElement) {
+		const newElement = document.createElement(currentElement.tagName === 'STYLE' ? 'div' : 'style');
+
+		// Transfer the inner content
+		newElement.innerHTML = currentElement.innerText;
+
+		if (currentElement.tagName === 'STYLE') {
+			newElement.classList.add('div__content')
+		} else {
+			newElement.classList.add('style__content')
+			newElement.contentEditable = true;
+		}
+
+		// Replace the old element with the new one
+		currentElement.parentNode.replaceChild(newElement, currentElement);
+
+		return newElement;
+	}
+</script>
